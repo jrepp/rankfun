@@ -8,6 +8,11 @@ from fractions import Fraction
 
 import chess.pgn
 import hashlib
+import re
+
+def normalize_name(n):
+    tokens = re.sub('\W', ' ', n.lower()).split()
+    return ' '.join(tokens)
 
 def summarize(game):
     d = {}
@@ -16,15 +21,18 @@ def summarize(game):
     r = game.headers.get("Result", "0-0")
     rparts = r.split('-')
 
-    d["WhiteNameHash"] = hashlib.sha1(d["White"]).hexdigest()[:8]
-    d["BlackNameHash"] = hashlib.sha1(d["Black"]).hexdigest()[:8]
+    d["WhiteNameHash"] = hashlib.sha1(
+            normalize_name(d["White"])).hexdigest()[:8]
+    d["BlackNameHash"] = hashlib.sha1(
+            normalize_name(d["Black"])).hexdigest()[:8]
     d["Result1"] = float(Fraction(rparts[0]))
     d["Result2"] = float(Fraction(rparts[1]))
 
     if not d.get("BlackElo"):
-        d["BlackElo"] = 1400
+        d["BlackElo"] = 0
+
     if not d.get("WhiteElo"):
-        d["BlackElo"] = 1400
+        d["WhiteElo"] = 0
 
     return d
 
