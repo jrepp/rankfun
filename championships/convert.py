@@ -21,6 +21,11 @@ def summarize(game):
     d["Result1"] = float(Fraction(rparts[0]))
     d["Result2"] = float(Fraction(rparts[1]))
 
+    if not d.get("BlackElo"):
+        d["BlackElo"] = 1400
+    if not d.get("WhiteElo"):
+        d["BlackElo"] = 1400
+
     return d
 
 def convert(filename):
@@ -34,7 +39,11 @@ def convert(filename):
             # p1,p2,result1,result2,rank1,rank2,moves,date,round
             print("{WhiteNameHash},{BlackNameHash},{Result1},{Result2},{WhiteElo},{BlackElo},{Date},{Round}".format(**d))
 
+def header():
+    print("White,Black,WhiteResult,BlackResult,WhiteRank,BlackRank,Date,Round")
+
 def allfiles(dirname):
+    header()
     onlyfiles = [ f for f in listdir(dirname) 
             if (isfile(join(dirname, f)) and f.endswith('pgn')) ]
     for f in onlyfiles:
