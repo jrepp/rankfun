@@ -43,3 +43,33 @@ init <- function() {
   files2 <- files[grepl(".*pgn", files)]
   lapply(files2, pgn.load)
 }
+
+predict <- function(rating.a, rating.b) {
+  1 / (1 + 10 ^ ((rating.b - rating.a) / 400))
+}
+
+collect.players <- function(matches) {
+  unique(c(matches$WhiteNameHash, matches$BlackNameHash))
+}
+
+update.ratings <- function(rating.a, rating.b, score.a, score.b, k) {
+  irating.a <- 10 ^ (rating.a / 400)
+  irating.b <- 10 ^ (rating.b / 400)
+  
+  expected.a <- irating.a / (irating.a + irating.b)
+  expected.b <- irating.b / (irating.a + irating.b)
+  
+  newrating.a <- rating.a + (k * (score.a - expected.a))
+  newrating.b <- rating.b + (k * (score.b - expected.b))
+  
+  c(newrating.a, newrating.b)
+}
+
+rating.boltzman <- function(r) {
+  p <- 1 - (1 / ( 1 + exp((0.00583 * r)  - 0.0505)))
+  return(p)
+}
+
+rating.linear <- function(r) {
+  p <- 0.5 + (0.001 * r)
+}

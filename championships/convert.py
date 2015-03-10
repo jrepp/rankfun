@@ -20,11 +20,16 @@ def summarize(game):
 
     r = game.headers.get("Result", "0-0")
     rparts = r.split('-')
+    
+    white_norm = normalize_name(d["White"])
+    black_norm = normalize_name(d["Black"])
 
-    d["WhiteNameHash"] = hashlib.sha1(
-            normalize_name(d["White"])).hexdigest()[:8]
-    d["BlackNameHash"] = hashlib.sha1(
-            normalize_name(d["Black"])).hexdigest()[:8]
+    d["WhiteName"] = white_norm
+    d["BlackName"] = black_norm
+
+    d["WhiteNameHash"] = hashlib.sha1(white_norm).hexdigest()[:8]
+    d["BlackNameHash"] = hashlib.sha1(black_norm).hexdigest()[:8]
+
     d["Result1"] = float(Fraction(rparts[0]))
     d["Result2"] = float(Fraction(rparts[1]))
 
@@ -36,7 +41,7 @@ def summarize(game):
 
     return d
 
-def convert(filename):
+def convert_games(filename):
     with open(filename, 'r') as pgn:
         while True:
             g = chess.pgn.read_game(pgn)
@@ -45,17 +50,17 @@ def convert(filename):
             d = summarize(g)
     
             # p1,p2,result1,result2,rank1,rank2,moves,date,round
-            print("{WhiteNameHash},{BlackNameHash},{Result1},{Result2},{WhiteElo},{BlackElo},{Date},{Round}".format(**d))
+            print("{WhiteName},{WhiteNameHash},{BlackName},{BlackNameHash},{Result1},{Result2},{WhiteElo},{BlackElo},{Date},{Round}".format(**d))
 
-def header():
-    print("White,Black,WhiteResult,BlackResult,WhiteRank,BlackRank,Date,Round")
+def games_header():
+    print("WhiteName,WhiteNameHash,BlackName,BlackNameHash,WhiteResult,BlackResult,WhiteRank,BlackRank,Date,Round")
 
-def allfiles(dirname):
-    header()
+def each_pgn(dirname, process):
     onlyfiles = [ f for f in listdir(dirname) 
             if (isfile(join(dirname, f)) and f.endswith('pgn')) ]
-    for f in onlyfiles:
-        convert(f)
+    for filename in onlyfiles:
+        process(filename)
 
 if __name__ == '__main__':
-    allfiles('.')
+    games_header()
+    each_pgn('.', convert_games)
