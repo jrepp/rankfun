@@ -20,13 +20,12 @@ type Distribution = Double -- 0-1 in division
 type WinLoss = Double -- 0-1
 type TimeStamp = [Char]
 type DivisionId = Int
-type GameDuration = Int
-type Elo = Integer
-type EloDeviation = Integer
+type GameDuration = Double
+type PeriodLength = Double
+type Elo = Double
+type EloDeviation = Double
 
 -- A single rating value
 data Rating = Rating  Mu Phi Sigma
     deriving (Ord, Eq, Show)
-
-ratingCentered = Rating 0.0 2.03822 0
 

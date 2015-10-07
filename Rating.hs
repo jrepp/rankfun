@@ -10,20 +10,22 @@ data ComputeOutcome = ComputeOutcome Rating WinLoss
 --
 -- Global system volatility recommended .3-1.2
 --
-volatilityOverTime = 0.3
+volatilityOverTime = 0.3 :: Double 
+eloScale = 173.7178 :: Double
+eloBase = 1500.0 :: Double 
 
 --
 -- Elo Conversions
 --
-fromElo elo = (elo - 1500) /  173.7178
-fromEloDeviation rd = (rd / 173.7178)
+fromElo :: Elo -> Mu
+fromElo elo = (elo - eloBase) /  eloScale
+toElo :: Mu -> Elo
+toElo mu = (mu * eloScale) + eloBase
+fromEloDeviation :: EloDeviation -> Phi
+fromEloDeviation rd = (rd / eloScale)
+toEloDeviation :: Phi -> EloDeviation
+toEloDeviation phi = (phi * eloScale)
 
---
--- Given a rating and set of outcomes from the rating period produce a new
--- rating 
---
--- Glick Step 3 - Calculate estimate of variance from game outcomes
---
 g :: Phi -> Phi
 g phi = 1 / sqrt (1 + ((3 * (phi * phi)) / (pi * pi)))
 
@@ -81,8 +83,14 @@ innerDelta r co = g(pJ) * (winLossJ - (innerE u uJ pJ))
 --
 -- Calculate the delta improvement over the outcomes in the rating period
 --
-deltaImprovement :: Rating -> [ComputeOutcome] -> [Mu]
-deltaImprovement rating outcomes = map (innerDelta rating) outcomes
+deltaImprovement :: Rating -> [ComputeOutcome] -> Mu
+deltaImprovement rating outcomes = u + 
+    (q / (1 / phisq) + (1 / dsq)) * (sum $ map (innerDelta rating) outcomes)
+    where 
+        u = mu rating
+        phisq = (phi rating)^2
+        q = log 10 / 400
+        dsq = 1 -- TODO: substitute 
 
 --where   deltasq = delta^2
         --sigmasq = s^2
@@ -100,10 +108,19 @@ deltaImprovement rating outcomes = map (innerDelta rating) outcomes
 --iteration :: Double -> Double
 --iteration (f(a - k*r) < 0) k = succ k
 --iteration = 1
+--
+innerDsq :: Rating -> Rating -> WinLoss -> Double
+innerDsq rating otherRating winLoss = (g $ pJ)^2 * 
+    (innerE u uJ pJ) * 
+    (1 - innerE u uJ pJ)
+    where
+        u = mu rating
+        uJ = mu otherRating 
+        pJ = phi otherRating
 
 -- Update phi 
 updatePhi :: Phi -> Sigma -> Phi
-updatePhi phi sigma = sqrt(phi^2 + sigma^2)
+updatePhi phi sigma = sqrt (phi^2 + sigma^2)
 
 -- Clamp elo deviation
 minEloDeviation :: EloDeviation -> EloDeviation
@@ -111,8 +128,26 @@ minEloDeviation rd = min rd 350
 
 -- Given a number of rating periods t, calculate the clamped new rating
 -- deviation in elo number space
-eloDeviationDecay :: Integer -> Integer -> Integer
-eloDeviationDecay t rd = min sqrt( (rd^2) + (t * (c^2)) ) 250
-                            where c = 15 -- constant increase
+eloDeviationDecay :: PeriodLength -> EloDeviation -> EloDeviation
+eloDeviationDecay t rd = min (sqrt (rd^2) + t * (c^2) ) 350
+                            where c = 15.0 -- constant increase
+
+--
+-- Calculate a 95% confidence interval of player strength in
+-- elo space
+--
+playerStrength :: Rating -> (Elo, Elo)
+playerStrength r = ((elo - strength2), (elo + strength2))
+                   where
+                        elo = toElo $ mu r
+                        strength2 = 2.0 * (toEloDeviation $ phi r)
+
+-- Example data from paper
+player1 = Rating (fromElo 1400) (fromEloDeviation 30) 0
+player2 = Rating (fromElo 1550) (fromEloDeviation 100) 0
+player3 = Rating (fromElo 1700) (fromEloDeviation 300) 0
+
+ratingCentered = Rating 0.0 2.03822 0
+player0 = Rating (fromElo 1500) (fromEloDeviation 200) 0
 
 
