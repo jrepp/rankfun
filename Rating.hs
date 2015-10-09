@@ -71,26 +71,28 @@ v rating outcomes = map (innerV rating) outcomes
 --
 -- Calculate the inner delta for the rating update
 --
-innerDelta :: Rating -> ComputeOutcome -> Mu
-innerDelta r co = g(pJ) * (winLossJ - (innerE u uJ pJ))
-                            where   orJ = outcomeRating co
-                                    winLossJ = outcomeWinLoss co
-                                    u = mu r
-                                    uJ = mu orJ
-                                    pJ = phi orJ
+innerDelta :: Rating -> Rating -> WinLoss -> Mu
+innerDelta r rJ winLossJ = g(pJ) * (winLossJ - (innerE u uJ pJ))
+                            where   u = mu r
+                                    uJ = mu rJ
+                                    pJ = phi rJ
 
 
 --
 -- Calculate the delta improvement over the outcomes in the rating period
 --
-deltaImprovement :: Rating -> [ComputeOutcome] -> Mu
+deltaImprovement :: Rating -> [(Rating, WinLoss)] -> Mu
 deltaImprovement rating outcomes = u + 
-    (q / (1 / phisq) + (1 / dsq)) * (sum $ map (innerDelta rating) outcomes)
+    ((1 / phisq) + (1 / dsqv)) * (sum $ map (callInnerDelta rating) outcomes)
     where 
+        callInnerDelta = \r (rJ, winLossJ) -> innerDelta r rJ winLossJ
         u = mu rating
         phisq = (phi rating)^2
         q = log 10 / 400
-        dsq = 1 -- TODO: substitute 
+        dsqv = dsq rating outcomes
+
+deltaDeviation :: Phi -> Double -> Phi
+deltaDeviation p dsqv = sqrt (1 / ((1 / p^2) + (1 / dsqv)))
 
 --where   deltasq = delta^2
         --sigmasq = s^2
@@ -111,12 +113,16 @@ deltaImprovement rating outcomes = u +
 --
 innerDsq :: Rating -> Rating -> WinLoss -> Double
 innerDsq rating otherRating winLoss = (g $ pJ)^2 * 
-    (innerE u uJ pJ) * 
-    (1 - innerE u uJ pJ)
+    (innerE u uJ pJ) * (1 - innerE u uJ pJ)
     where
         u = mu rating
         uJ = mu otherRating 
         pJ = phi otherRating
+
+dsq :: Rating -> [(Rating, WinLoss)] -> Double
+dsq rating outcomes = 1 / (qsq * (sum $ map (callInnerDsq rating) outcomes))
+        where   callInnerDsq = \r (rJ, sJ) -> innerDsq r rJ sJ
+                qsq = (log 10 / 400)^2
 
 -- Update phi 
 updatePhi :: Phi -> Sigma -> Phi
@@ -149,5 +155,8 @@ player3 = Rating (fromElo 1700) (fromEloDeviation 300) 0
 
 ratingCentered = Rating 0.0 2.03822 0
 player0 = Rating (fromElo 1500) (fromEloDeviation 200) 0
+
+-- Example outcomes from paper of player1-3 against player0
+sampleOutcomes = [(player1, 1.0), (player2, 0.0), (player3, 0.0)]
 
 
